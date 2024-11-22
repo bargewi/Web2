@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hacker Terminal with Auto Snapshot</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0c0c0c;
+      font-family: 'Courier New', monospace;
+      color: #00FF00;
+      overflow: hidden;
+    }
+    .terminal {
+      width: 100%;
+      height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1.6;
+    }
+    .line {
+      display: block;
+    }
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      background-color: #00FF00;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink {
+      50% { background-color: transparent; }
+    }
+    .progress-bar {
+      height: 5px;
+      width: 100%;
+      background: #333;
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+    .progress {
+      height: 100%;
+      width: 0;
+      background: #00FF00;
+      animation: load 5s linear infinite;
+    }
+    @keyframes load {
+      0% { width: 0; }
+      100% { width: 100%; }
+    }
+
+    /* Centered Wanted photo */
+    .wanted-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .wanted-photo {
+      width: 250px;
+      height: 300px;
+      background-color: gray;
+      margin-top: 20px;
+      border-radius: 5px;
+      border: 3px solid red;
+      position: relative;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+    }
+    .wanted-photo img {
+      width: 100%;
+      height: 100%;
+      border-radius: 5px;
+    }
+    .photo-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: red;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    /* Hide the video */
+    video {
+      display: none;
+    }
+
+    /* Hide the canvas (used to take the snapshot) */
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="terminal" class="terminal"></div>
+
+  <!-- Hidden Canvas to Capture Snapshot -->
+  <canvas id="canvas" width="320" height="240"></canvas>
+
+  <!-- Display Snapshot in Wanted Section -->
+  <div id="wanted-container" class="wanted-container" style="display:none;">
+    <div class="wanted-photo">
+      <div class="photo-overlay">WANTED</div>
+      <img id="snapshot-img" src="" alt="Snapshot will appear here">
+    </div>
+  </div>
+
+  <script>
+    const terminal = document.getElementById('terminal');
+    const snapshotImg = document.getElementById('snapshot-img');
+    const canvas = document.getElementById('canvas');
+    const video = document.createElement('video'); // Create video element dynamically
+    const wantedContainer = document.getElementById('wanted-container');
+    const lines = [
+      "Initializing system...",
+      "Connecting to server...",
+      "Accessing core files...",
+      "Login successful...",
+      "Welcome, Hacker.",
+      "Loading... Please Wait."
+    ];
+
+    let lineIndex = 0;
+    let charIndex = 0;
+    let streaming = false;
+
+    // Access the webcam
+    function startWebcam() {
+      if (navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(function(stream) {
+            video.srcObject = stream;
+            video.play();
+            streaming = true;
+          })
+          .catch(function(err) {
+            console.log("Error accessing webcam: " + err);
+          });
+      } else {
+        alert("Webcam not supported by your browser.");
+      }
+    }
+
+    // Function to take a snapshot after a delay
+    function captureSnapshot() {
+      if (!streaming) {
+        alert("Webcam not streaming properly.");
+        return;
+      }
+
+      // Draw the current video frame to the canvas
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert canvas to image URL
+      const dataURL = canvas.toDataURL('image/png');
+      
+      // Display the image in the "Wanted" section
+      snapshotImg.src = dataURL;
+      wantedContainer.style.display = 'flex'; // Show the "Wanted" section with the snapshot
+    }
+
+    // Function to type out each line of terminal output
+    function typeLine() {
+      if (lineIndex < lines.length) {
+        if (charIndex < lines[lineIndex].length) {
+          terminal.innerHTML += lines[lineIndex].charAt(charIndex);
+          charIndex++;
+          setTimeout(typeLine, 100);
+        } else {
+          terminal.innerHTML += "<span class='cursor'>|</span>";
+          lineIndex++;
+          charIndex = 0;
+          setTimeout(() => {
+            terminal.innerHTML = terminal.innerHTML.replace("<span class='cursor'>|</span>", "");
+            if (lineIndex === 5) terminal.innerHTML += "<div class='progress-bar'><div class='progress'></div></div>";
+            typeLine();
+          }, 1500);
+        }
+      } else {
+        setTimeout(() => {
+          // After terminal finishes, take a snapshot
+          captureSnapshot();  // Automatically capture the snapshot after loading finishes
+        }, 1000);  // Wait a bit before taking the snapshot
+      }
+    }
+
+    // Start terminal typing effect
+    typeLine();
+
+    // Start the webcam after the terminal finishes
+    setTimeout(() => {
+      startWebcam();  // Start webcam after the terminal finishes loading
+    }, 6000); // Wait for the terminal animation to finish before starting webcam
+
+  </script>
+
+</body>
+</html>
